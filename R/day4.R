@@ -61,12 +61,11 @@ play_bingo <- function(boards, balls) {
   
   ## do balls until found a winner
   for (x in 1:length(balls)) {
-    # mark squares matching the draw
+    # mark squares matching the drawed ball
     boards <- boards |>
       mutate(marked = ifelse(value == balls[[x]], TRUE, marked))
     # extract the hits
-    new_hits <- boards |>
-      filter(marked)
+    new_hits <- boards |> filter(marked)
     # keep the unmarked squares
     boards <- boards |> filter(!marked)
     
@@ -130,9 +129,61 @@ cat("Part 1 solution:", sol)
 
 # Figure out which board will win last. Once it wins, what would its final score be?
 
+play_bingo_badly <- function(boards, balls) {
+  ## call a number and mark boards
+  winners <- tibble()
+  all_hits <- tibble()
+  
+  ## do balls until found a winner
+  for (x in 1:length(balls)) {
+    # mark squares matching the draw
+    boards <- boards |>
+      mutate(marked = ifelse(value == balls[[x]], TRUE, marked))
+    # extract the hits
+    new_hits <- boards |>
+      filter(marked)
+    # keep the unmarked squares
+    boards <- boards |> filter(!marked)
+    
+    # combine all existing hits to check for winner
+    all_hits <- bind_rows(all_hits, new_hits)
+    # any with a full row
+    complete_rows <- all_hits |>
+      count(board, row) |>
+      filter(n == 5)
+    # any with a full col
+    complete_cols <- all_hits |>
+      count(board, col) |>
+      filter(n == 5)
+    new_winners <- 
+      bind_rows(complete_rows, complete_cols)
+    
+    # add a new winner(s)
+    if (nrow(new_winners) >= 1) {
+      # new_winners [board, score, step]
+      new_scores <- 
+        # keep the board score at win-time
+        bind_rows(boards, all_hits) |> 
+        filter(board %in% new_winners$board & !marked) |> 
+        group_by(board) |> 
+        summarise(score = sum(value) * balls[[x]],
+                  step = x)
+      # add new results to winners data
+      winners <- winners |> bind_rows(new_scores)
+      
+      # remove the winning boards from the game
+      boards <- boards |> filter(!board %in% winners$board)
+      all_hits <- all_hits |> filter(!board %in% winners$board)
+    }
+  }
+  return( winners |> filter(step == max(step)) |> pull(score) )
+  
+}
 
 
+file <- 'data/day4.txt'
+data <- parse_input(file)
+solution2 <- play_bingo_badly(boards = data$boards,
+                 balls = data$balls)
 
-
-
-
+cat("Part2 solution = ", solution2)
