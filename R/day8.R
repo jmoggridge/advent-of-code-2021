@@ -31,6 +31,13 @@
 # .    f  e    f  .    f  e    f  .    f
 #  gggg    gggg    ....    gggg    gggg
 
+# A = 8
+# B = 6
+# C = 8
+# D = 7
+# E = 4
+# F = 9
+# G = 7
 
 # So, to render a 1, only segments c and f would be turned on; the rest
 # would be off. To render a 7, only segments a, c, and f would be turned
@@ -113,45 +120,54 @@
 
 library(dplyr)
 library(tidyr)
-library(stringr)
+library(purrr)
+library(tibble)
 
-parse_data <- function(file){
-  tibble(data = readLines(file) |> str_trim()) |>
+parse_data <- function(file) {
+  tibble(data = readLines(file) |> trimws()) |>
     separate(col = data,
-             into = c('x', 'y'),
+             into = c('patterns', 'output'),
              sep = ' \\| ') |>
-    mutate(
-      across(everything(), ~ str_split(.x, ' ')),
-      entry = row_number())  |> 
+    mutate(across(everything(), ~ strsplit(.x, ' ')),
+           entry = row_number()) |>
     relocate(entry)
 }
 
-data <- parse_input('data/day08.txt')
-
-# count 1,4, 7, and 8 segments in output
-data |> 
-  unnest(cols = c(y)) |> 
-  filter(nchar(y) %in% c(2, 4, 3, 7)) |> 
+# Part 1 solution
+parse_data('data/day08.txt') |>
+  # count those 'digits' that have unique number of segments:
+  # 2 (1), 3 (7), 4 (4), and 7 (8) segments (digit) in output
+  unnest(cols = c(output)) |>
+  filter(nchar(output) %in% c(2, 3, 4, 7)) |>
   nrow()
 
-# 
+  # solution =  416 #
+
+
+### ----------------------------------------------------------------------
+
 # --- Part Two ---
+
 #   Through a little deduction, you should now be able to determine the remaining digits. Consider again the first example above:
-#   
+
+#      8      235  235  234    7    069    069   4    069    1
 #   acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab |
+#    235   235   235   235
 #   cdfeb fcadb cdfeb cdbaf
+
 # After some careful analysis, the mapping between signal wires and segments only make sense in the following configuration:
-#   
-#   dddd
+#
+#  dddd
 # e    a
 # e    a
-# ffff
+#  ffff
 # g    b
 # g    b
-# cccc
+#  cccc
+
 # So, the unique signal patterns would correspond to the following digits:
-#   
-#   acedgfb: 8
+
+# acedgfb: 8
 # cdfbe: 5
 # gcdfa: 2
 # fbcad: 3
@@ -161,17 +177,18 @@ data |>
 # eafb: 4
 # cagedb: 0
 # ab: 1
+
 # Then, the four digits of the output value can be decoded:
-#   
-#   cdfeb: 5
+# cdfeb: 5
 # fcadb: 3
 # cdfeb: 5
 # cdbaf: 3
+
 # Therefore, the output value for this entry is 5353.
-# 
+
 # Following this same process for each entry in the second, larger example above, the output value of each entry can be determined:
-#   
-#   fdgacbe cefdb cefbgd gcbe: 8394
+
+# fdgacbe cefdb cefbgd gcbe: 8394
 # fcgedb cgb dgebacf gc: 9781
 # cg cg fdcagb cbg: 1197
 # efabcd cedba gadfec cb: 9361
@@ -181,57 +198,83 @@ data |>
 # ed bcgafe cdgba cbgef: 1625
 # gbdfcae bgc cg cgb: 8717
 # fgae cfgab fg bagce: 4315
+
 # Adding all of the output values in this larger example produces 61229.
-# 
+
 # For each entry, determine all of the wire/segment connections and decode the four-digit output values. What do you get if you add up all of the output values?
-#   
-#   
 
-# digit: n_seg - segments
-#' 0: 6 - abcefg
-#' 1: 2 - cf
-#' 2: 5 - acdeg
-#' 3: 5 - acdfg
-#' 4: 4 - bcdf
-#' 5: 5 - abdfg
-#' 6: 6 - abdefg
-#' 7: 3 - acf
-#' 8: 7 - abcdefg
-#' 9: 6 - acbdfg
+## --------------------------------------------------------------------------
 
-# By letter:
-# 
-# nums_by_letter <- tribble(
-#   ~ segment,
-#   ~ digits,
-#   'a',
-#   c(0, 2, 3, 5, 6, 7, 8, 9),
-#   'b',
-#   c(0, 4, 5, 6, 8, 9),
-#   'c',
-#   c(0, 1, 2, 3, 4, 7, 8, 9),
-#   'd',
-#   c(2, 3, 4, 5, 6, 8, 9),
-#   'e',
-#   c(0, 2, 6, 8),
-#   'f',
-#   c(0, 1, 3, 4, 5, 6, 7, 8, 9),
-#   'g',
-#   c(0, 2, 3, 5, 6, 8, 9)
-# )
-# 
-# lets_by_number <-
-#   nums_by_letter |> 
-#   unnest(cols = c(digits)) |> 
-#   mutate(digits = as.factor(digits)) |> 
-#   group_by(digits) |> 
-#   summarize(segments = list(segment)) |> 
-#   mutate(n_seg = map_db)
-# 
-# 
-# lets_by_number
-# 
-# crossing(seg = letters[1:7], digits =  paste0('x_', 0:9))
-# 
-# 
+pattern_split <- function(pattern){
+  strsplit(pattern, split = '') |> unlist() |> sort()
+}
+pattern_sort <- function(pattern){
+  strsplit(pattern, split = '') |> unlist() |> sort() |> paste0(collapse = '')
+}
+
+
+# A = 8     aaaa 
+# B = 6    b    c
+# C = 8    b    c
+# D = 7     dddd 
+# E = 4    e    f
+# F = 9    e    f
+# G = 7     gggg 
+
+std_code <- 
+  tibble::tribble(
+    ~digit, ~seg_string, ~freq_string,
+    '1', 'CF', '89',
+    '7', 'ACF', '889',
+    '4', 'BCDF', '6789',    
+    '8', 'ABCDEFG', '4677889',
+    '2', 'ACDEG','47788',
+    '3', 'ACDFG','77889',
+    '5', 'ABDFG','67789',
+    '0', 'ABCEFG','467889',
+    '6', 'ABDEFG','467789',
+    '9', 'ABCDFG','677889'
+  )
+freq_code <- std_code |> select(digit, freq_string)
+
+get_seg_freq <- function(patterns){
+  # gets the frequency table for all segments among digits 0-9
+  tibble( patterns = patterns ) |> 
+    mutate(seg = purrr::map(patterns, ~strsplit(.x,  ''))) |> 
+    unnest(seg) |>  unnest(seg) |> 
+    count(seg, name = 'freq_char') |> 
+    mutate(freq_char = as.character(freq_char))
+}
+
+
+solve_output <- function(patterns, output){
+  
+  freq_table <- get_seg_freq(patterns)
+  solved_code <- 
+    tibble(
+      pattern = 1:length(patterns),
+      seg = purrr::map(patterns, pattern_split)
+    ) |> 
+    unnest(seg) |> 
+    left_join(freq_table, by = 'seg') |> 
+    group_by(pattern) |> 
+    summarise(freq_string = paste0(c(freq_char) |> sort(), collapse='')) |> 
+    left_join(freq_code, by = "freq_string") |> 
+    mutate(pattern_string = map_chr(patterns, pattern_sort))
+  
+  sol <- tibble(pattern_string = output |> map_chr(pattern_sort)) |> 
+    left_join(solved_code,  by = "pattern_string") |> 
+    summarise(solution =  as.numeric(paste0(digit, collapse = ''))) |> 
+    pull(solution)
+  return(sol)
+}
+
+
+## Part 2 solution
+parse_data('data/day08.txt') |> 
+  mutate(solution = map2_dbl(patterns, output, solve_output)) |>
+  pull(solution) |>
+  sum()
+
+  # 1043697
 
