@@ -178,33 +178,32 @@ score_autocompletion <- function(df){
 }
 
 
-incomplete <- parse_input('data/day10.txt') |>
+incomplete <-
+  # filter out corrupt sequences to get only incompletes
+  parse_input('data/day10.txt') |>
   mutate(corrupt = map_chr(code, check_code_corruption)) |> 
   filter(corrupt == 'ok') |> 
-  select(-corrupt) |>
   # call autocorrector to get unclosed brackets
   mutate(
     closer = map(code, autocorrect_code),
-    id = row_number()
+    line = row_number()
   ) |> 
-  select(-code, -value) |> 
-  # make long form
+  # make long form of (line, hanging symbol, points for symbol)
   unnest(closer) |> 
   unnest(closer) |> 
-  relocate(id) |> 
-  left_join(points)
+  left_join(points, by = "closer")
    
- 
+ ## part two solution: median score of autocompletions
 incomplete |> 
-  # use split-apply-combine strategy to get scores
-  group_by(id) |> 
+  # use split-apply-combine strategy to get scores for each incomplete line
+  group_by(line) |> 
   nest(data = c(point, closer)) |> 
   mutate(score = map_dbl(data, score_autocompletion)) |> 
   # take the median score
   pull(score) |> 
   median()
 
-
+# 2762335572
 
 
 
