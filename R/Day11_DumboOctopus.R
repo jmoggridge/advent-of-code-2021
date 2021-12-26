@@ -139,6 +139,52 @@ parse_input(file = 'data/day11.txt') |>
 
 
 
+## Part 2 ----------------------------------------------------------------------
+
+# If you can calculate the exact moments when the octopuses will all flash simultaneously, you should be able to navigate through the cavern.
+# What is the first step during which all octopuses flash?
+
+
+# long form octopus energy, x pos, y pos, 
+octopi <- parse_input(file = 'data/day11.txt')
+
+# success condition and step counter
+n_octo <- nrow(octopi)
+step <- 1
+
+# do until the first step where all octopi flash
+while (TRUE){
+  
+  #' # During a single step, the following occurs:....
+  #' First, the energy level of each octopus increases by 1.
+  octopi$energy <- octopi$energy + 1
+  
+  #' Then, any octopus with an energy level greater than 9 flashes
+  flashing <- octopi |> filter(energy>9)
+  octopi <- octopi |> anti_join(flashing, by=c('row','col'))
+  resting <- tibble()
+  
+  # Proceed to spread flash effect until all flashers used up
+  while(nrow(flashing) > 0){
+    rs <- glow_neighbs(octopi, flashing, resting)
+    octopi <- rs$octopi
+    flashing <- rs$flashing
+    resting <- rs$resting
+  }
+  # check if all octopi flashed -> success, record step number
+  if (nrow(resting) == n_octo){
+    solution_step <- step
+    break
+  }
+    
+  # reset ones that already flashed at end of step
+  octopi <- octopi |> 
+    bind_rows(resting |> mutate(energy = 0))
+  # increment step counter
+  step <- step + 1
+}
+
+cat('solution_step', solution_step)
 
 
   
