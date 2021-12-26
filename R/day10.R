@@ -1,4 +1,4 @@
-# --- Day 10: Syntax Scoring ---
+# --- Day 10: Syntax Scoring ---------------------------------------
 
 # the navigation subsystem (your puzzle input):
 
@@ -63,13 +63,20 @@
 #' >: 25137 points.
 #'
 
-
+#------------------------------------------------------------------------
 
 library(tidyr)
 library(dplyr)
 library(purrr)
 library(stringr)
 
+parse_input <- function(file){
+  readLines(file) |>
+    as_tibble() |>
+    mutate(code = map(value,  ~ str_trim(.x) |> str_split('', simplify = T))) 
+}
+
+# part 1: find which are corrupt
 check_code_corruption <- function(code) {
   brackets <- list(
     '<' = '>',
@@ -96,24 +103,121 @@ check_code_corruption <- function(code) {
   }
   return(result)
 }
+# scoring function
+return_score1 <- function(codes){
+  points <-
+    tribble( ~ type, ~ points,
+             ')', 3,
+             ']', 57,
+             '}', 1197,
+             '>', 25137)
+  codes |> 
+    filter(corrupt != 'ok') |> 
+    left_join(points, by = c('corrupt' = 'type')) |> 
+    summarise(solution = sum(points))
+}
 
-points <-
-  tribble( ~ type, ~ points,
-           ')', 3,
-           ']', 57,
-           '}', 1197,
-           '>', 25137)
 
-
-### Part 1 solution
-readLines('data/day10.txt') |>
-  as_tibble() |>
-  mutate(code = map(value,  ~ str_trim(.x) |> str_split('', simplify = T))) |> 
+### Part 1 solution # 469755
+parse_input('data/day10.txt') |> 
   mutate(corrupt = map_chr(code, check_code_corruption)) |> 
-  filter(corrupt != 'ok') |> 
-  left_join(points, by = c('corrupt' = 'type')) |> 
-  summarise(solution = sum(points))
-  # 469755
+  return_score1()
+  
+
+# --- Part Two ------------------------------------------------------
+
+# Now, discard the corrupted lines. The remaining lines are incomplete.
+
+# To repair the navigation subsystem, you just need to figure out the sequence of closing characters that complete all open chunks in the line.
+# 
+# You can only use closing characters (), ], }, or >), and you must add them in the correct order so that only legal pairs are formed and all chunks end up closed.
+
+
+autocorrect_code <- function(code) {
+  brackets <- list(
+    '<' = '>',
+    '{' = '}',
+    '[' = ']',
+    '(' = ')'
+  )
+  opens <- list()
+  result <- 'ok'
+  
+  for (i in seq_along(code)) {
+    char <- code[i]
+    if (char %in% names(brackets)) {
+      opens <- append(opens, char)
+    } else {
+      brackets[opens[length(opens)][[1]]]
+      if (char == brackets[opens[length(opens)][[1]]]) {
+        opens[length(opens)] <- NULL
+      } else{
+        result <- char
+        break
+      }
+    }
+  }
+  return(opens |> rev())
+}
+
+# Start with a total score of 0. Then, for each character, multiply the total score by 5 and then increase the total score by the point value given for the character in the following table:
+points <-tribble(
+  ~closer, ~point,
+  '(', 1,
+  '[', 2,
+  '{', 3,
+  '<', 4
+)
+score_autocompletion <- function(df){
+  score <- 0
+  for (i in seq(nrow(df))){
+    pt <- df[i,'point'][[1]]
+    score <- 5*score + pt
+  }
+  return(score)
+}
+
+
+incomplete <- parse_input('data/day10.txt') |>
+  mutate(corrupt = map_chr(code, check_code_corruption)) |> 
+  filter(corrupt == 'ok') |> 
+  select(-corrupt) |>
+  # call autocorrector to get unclosed brackets
+  mutate(
+    closer = map(code, autocorrect_code),
+    id = row_number()
+  ) |> 
+  select(-code, -value) |> 
+  # make long form
+  unnest(closer) |> 
+  unnest(closer) |> 
+  relocate(id) |> 
+  left_join(points)
+   
+ 
+incomplete |> 
+  # use split-apply-combine strategy to get scores
+  group_by(id) |> 
+  nest(data = c(point, closer)) |> 
+  mutate(score = map_dbl(data, score_autocompletion)) |> 
+  # take the median score
+  pull(score) |> 
+  median()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
