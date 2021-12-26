@@ -45,12 +45,13 @@
 # Given the starting energy levels of the dumbo octopuses in your cavern, simulate 100 steps. How many total flashes are there after 100 steps?
 #   
 #   
-
+library(tictoc)
 library(dplyr)
 library(tidyr)
 library(purrr)
 library(ggplot2)
 
+tic()
 parse_input <- function(file){
   readLines(file) |> 
     as_tibble() |> 
@@ -136,7 +137,7 @@ count_flashes <- function(octopi, steps){
 # Part 1 Solution ## 1585
 parse_input(file = 'data/day11.txt') |> 
   count_flashes(100)
-
+toc()
 
 
 ## Part 2 ----------------------------------------------------------------------
@@ -144,7 +145,7 @@ parse_input(file = 'data/day11.txt') |>
 # If you can calculate the exact moments when the octopuses will all flash simultaneously, you should be able to navigate through the cavern.
 # What is the first step during which all octopuses flash?
 
-
+tic()
 # long form octopus energy, x pos, y pos, 
 octopi <- parse_input(file = 'data/day11.txt')
 
@@ -163,10 +164,14 @@ while (TRUE){
   flashing <- octopi |> filter(energy>9)
   octopi <- octopi |> anti_join(flashing, by=c('row','col'))
   resting <- tibble()
-  
+  rs = list(
+    octopi  = octopi,
+    flashing = flashing,
+    resting = resting
+  )
   # Proceed to spread flash effect until all flashers used up
   while(nrow(flashing) > 0){
-    rs <- glow_neighbs(octopi, flashing, resting)
+    rs <- glow_neighbs(octopi = octopi, flashing = flashing, resting = resting)
     octopi <- rs$octopi
     flashing <- rs$flashing
     resting <- rs$resting
@@ -183,7 +188,8 @@ while (TRUE){
   # increment step counter
   step <- step + 1
 }
-
+toc()
+# p2 solution = 382
 cat('solution_step', solution_step)
 
 
