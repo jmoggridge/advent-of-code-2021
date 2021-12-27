@@ -1,6 +1,6 @@
 # https://adventofcode.com/2021/day/2
 
-# --- Day 2: Part 1:  Dive! ----
+# --- Day 2: Dive! ----
 
 # forward X increases the horizontal position by X units.
 # down X increases the depth by X units.
