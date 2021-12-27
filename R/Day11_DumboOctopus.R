@@ -154,21 +154,17 @@ n_octo <- nrow(octopi)
 step <- 1
 
 # do until the first step where all octopi flash
-while (TRUE){
+repeat {
   
   #' # During a single step, the following occurs:....
   #' First, the energy level of each octopus increases by 1.
   octopi$energy <- octopi$energy + 1
   
   #' Then, any octopus with an energy level greater than 9 flashes
-  flashing <- octopi |> filter(energy>9)
-  octopi <- octopi |> anti_join(flashing, by=c('row','col'))
+  flashing <- octopi |> filter(energy > 9)
+  octopi <- octopi |> filter(energy <= 9)
   resting <- tibble()
-  rs = list(
-    octopi  = octopi,
-    flashing = flashing,
-    resting = resting
-  )
+
   # Proceed to spread flash effect until all flashers used up
   while(nrow(flashing) > 0){
     rs <- glow_neighbs(octopi = octopi, flashing = flashing, resting = resting)
